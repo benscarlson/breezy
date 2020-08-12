@@ -4,6 +4,13 @@ output:
   html_document: default
 ---
 
+# Use breezy manually
+
+1) Download breezy repo code to mycoolproject
+2) Rename .Rproj file
+3) Initialize a git repo inside src
+4) Copy breezy_script.r to a new file and start editing it
+
 # Install breezy
 
 ```bash
@@ -26,12 +33,14 @@ ln -s ${breezy_home}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
 
 # Use breezy
 
+Initialize a mycoolproject in the directory ~/projects
+
 ```bash
 breezy ~/projects/mycoolproject
 
 ```
 
-# Breezy philosophy
+# Breezy workflows
 
 * analysis - this is where all output from scripts go. Can make subfolders with different scenarios, slightly different datasets, more recent versions of workflow, etc.
 * data - should hold data that is provided to you. Any derived data should generally go into the analysis folder. Data that is shared across many analysis folders can also go into data/derived subfolder

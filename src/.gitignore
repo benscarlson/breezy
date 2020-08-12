@@ -1,2 +1,7 @@
 .DS_Store
+.RData
+.RHistory
+.Rproj.user
+
+*.pdf
 *.html

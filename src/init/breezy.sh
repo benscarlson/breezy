@@ -3,7 +3,7 @@
 #TODO: Option to sync with github
 
 PATH=$PATH:../..
-eval "$(docopts -V - -h - : "$@" <<EOF
+eval "$(docopts -h - : "$@" <<EOF
 Usage: breezy [options] <argv>...
 First arg is the path and name of the project.
 Examples:
@@ -12,7 +12,6 @@ Examples:
   breezy mycoolproject
 
 Options:
-      --verbose  Generate verbose messages.
       --help     Show help options.
       --version  Print program version.
 ----
@@ -45,7 +44,7 @@ mv $to/breezy.Rproj $to/${pn}.Rproj
 #Copy .Rprofile
 cp ${BREEZY_HOME}/.Rprofile $to
 #Copy project readme file
-cp ${BREEZY_HOME}/src/init/Readme.md $to/src/Readme.md
+#cp ${BREEZY_HOME}/src/init/Readme.md $to/src/Readme.md
 
 #----
 #---- Git repo
