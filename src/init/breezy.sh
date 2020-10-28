@@ -38,6 +38,7 @@ mkdir -p $to #TODO: maybe rsync can do this
 # Copy folder structure and template code to new project
 # Ignores the init folder which contains this script
 rsync -rP --exclude=${BREEZY_HOME}/src/init ${BREEZY_HOME}/* $to
+rm $to/Readme.md #Remove Readme for breezy repo
 
 #Rename project file
 mv $to/breezy.Rproj $to/${pn}.Rproj

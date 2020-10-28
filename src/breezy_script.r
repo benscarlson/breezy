@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+#!/usr/bin/env Rscript --vanilla
 # chmod 744 script_template.r #Use to make executable
 
 #TODO: make a generic "mode" parameter. User can define modes for alternative code pathways
@@ -7,11 +7,13 @@
 #TODO: if writing output to same path as an existing entry in 
 # the parameters database (i.e. overwriting), should delete old
 # parameter entries.
+#TODO: <out> assumes path is subfolder of wd. should have logic for absolute path
+#TODO: should source all files in the funs folder
 '
 Template
 
 Usage:
-script_template <hvjob> <out> [-t] [--seed=<seed>]
+script_template <out> [-t] [--seed=<seed>]
 script_template (-h | --help)
 
 Options:
@@ -19,7 +21,6 @@ Options:
 -v --version     Show version.
 -s --seed=<seed>  Random seed. Defaults to 5326 if not passed
 -t --test         Indicates script is a test run, will not save output parameters or commit to git
--e --eda         Indicates eda mode, plots with additional info
 ' -> doc
 
 #---- Input Parameters ----#
@@ -43,10 +44,9 @@ if(interactive()) {
   .script <-  thisfile()
   .seed <- ag$seed
   .test <- as.logical(ag$test)
-  .eda <- as.logical(ag$eda)
   rd <- is_rstudio_project$make_fix_file(.script)
   
-  .outPF <- ag$out
+  .outPF <- ifelse(isAbsolute(ag$out),ag$out,file.path(.wd,ag$out))
 }
 
 #---- Initialize Environment ----#
@@ -57,27 +57,33 @@ t0 <- Sys.time()
 
 source(rd('src/startup.r'))
 
-spsm(library(DBI))
-spsm(library(RSQLite))
+suppressWarnings(
+  suppressPackageStartupMessages({
+    library(DBI)
+    library(RSQLite)
+  }))
 
-source(rd('src/funs/funs.r'))
+source(rd('src/funs/breezy_funs.r'))
 source(rd('src/funs/themes.r'))
 theme_set(theme_eda)
 
-#---- Parameters ----#
+#---- Local parameters ----#
 .dbPF <- file.path(.wd,"data/database.db")
 
-#---- Load data ----#
-
-db <- dbConnect(RSQLite::SQLite(), .dbPF)
-std <- tbl(db,'study')
-
-nsets <- read_csv(file.path(.wd,'niche_sets.csv'),col_types=cols()) %>% 
+#---- Load control files ----#
+nsets <- read_csv(file.path(.wd,'ctfs/niche_sets.csv'),col_types=cols()) %>% 
   filter(as.logical(run)) %>% select(-run)
-niches <- read_csv(file.path(.wd,'niches.csv'),col_types=cols()) %>% 
+niches <- read_csv(file.path(.wd,'ctfs/niches.csv'),col_types=cols()) %>% 
   filter(as.logical(run)) %>% select(-run) %>%
   inner_join(nsets %>% select(niche_set),by='niche_set')
 
+#---- Initialize database ----#
+db <- dbConnect(RSQLite::SQLite(), .dbPF)
+invisible(assert_that(length(dbListTables(db))>0))
+
+std <- tbl(db,'study')
+
+#---- Load data ----#
 dat0 <- read_csv(file.path(.wd,'obsbg_anno.csv'),col_types=cols())
 
 #---- Perform analysis ----#
@@ -85,9 +91,11 @@ dat0 <- read_csv(file.path(.wd,'obsbg_anno.csv'),col_types=cols())
 dbExecute(db,'PRAGMA foreign_keys=ON')
 dbBegin(db)
 
-saveRDS(p,file.path(.figPF,glue('{.simName}_gg.rds')))
+
 
 #---- Save output ---#
+dir.create(dirname(.outPF),recursive=TRUE,showWarnings=FALSE)
+
 h=6; w=9
 if(fext(.outPF)=='pdf') {
   ggsave(.outPF,plot=p,height=h,width=w,device=cairo_pdf) #save pdf

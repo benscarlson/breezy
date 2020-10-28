@@ -1,16 +1,22 @@
-#Non-chatty version of startup. Also does not load theme which requires wd.
-message('Running startup script...')
-spsm <- suppressPackageStartupMessages
 
-spsm(library(conflicted))
-spsm(library(glue))
-spsm(library(here)) #usually here is loaded already
-#spsm(library(lubridate)) #lubridate has a ton of conflicts with dplyr
-spsm(library(tidyverse))
-spsm(library(uuid))
+message('Running startup script...')
 
 options(stringsAsFactors=FALSE)
+options(dplyr.summarise.inform = FALSE) #https://www.tidyverse.org/blog/2020/05/dplyr-1-0-0-last-minute-additions/
+options(tidyverse.quiet = TRUE) #https://rstats-tips.net/2020/07/31/get-rid-of-info-of-dplyr-when-grouping-summarise-regrouping-output-by-species-override-with-groups-argument/
 
-conflict_prefer('here','here',quiet=TRUE) #Lubridate masks here(), but here() is depredated
+suppressWarnings(
+suppressPackageStartupMessages({
+  library(assertthat)
+  library(conflicted)
+  library(glue)
+  library(here)
+  library(tidyverse)
+  library(uuid)
+}))
+
+
+
+# Several common packages have conflicts with dplyr filter() and select()
 conflict_prefer('filter','dplyr',quiet=TRUE)
 conflict_prefer('select','dplyr',quiet=TRUE)

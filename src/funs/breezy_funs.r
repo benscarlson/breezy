@@ -1,3 +1,6 @@
+#----
+#---- These functions are used by breezy_script.r 
+#----
 
 #' @example 
 #' t1 <- Sys.time()
@@ -7,6 +10,11 @@ diffmin <- function(t,t2=Sys.time()) round(difftime(t2, t, unit = "min"),2)
 fext <- function(filePath){ 
   ex <- strsplit(basename(filePath), split="\\.")[[1]]
   return(ex[length(ex)])
+}
+
+#Found this function on the internet but don't have link anymore
+isAbsolute <- function(path) {
+  grepl("^(/|[A-Za-z]:|\\\\|~)", path)
 }
 
 #'Saves parameters for script run from global environment to csv

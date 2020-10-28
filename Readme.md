@@ -4,6 +4,10 @@ output:
   html_document: default
 ---
 
+# What is breezy?
+
+Breezy is a philosophy and set of standards for organizing your code. It is not a workflow management system.
+
 # Use breezy manually
 
 1) Download breezy repo code to mycoolproject
@@ -14,11 +18,15 @@ output:
 # Install breezy
 
 ```bash
+
 # Set breezy_home locally
 breezy_home=~/projects/breezy
 
+# Download repo code
+
+
 # Set breezy_home permanantly
-# Save a copy of .bash_profile first
+# Save a backup of .bash_profile first
 ts=.bash_profile_`date +%Y-%m-%d_%H-%M-%S`
 cp ~/.bash_profile ~/${ts}
 echo "export BREEZY_HOME=${breezy_home}" >> ~/.bash_profile
@@ -27,6 +35,10 @@ echo "export BREEZY_HOME=${breezy_home}" >> ~/.bash_profile
 chmod 744 ${breezy_home}/src/init/breezy.sh
 ln -s ${breezy_home}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
 
+#Do the same for breezy_refresh
+chmod 744 ${breezy_home}/src/init/breezy_refresh.sh
+ln -s ${breezy_home}/src/init/breezy_refresh.sh ~/bin/breezy_refresh #Make sure ~/bin is in path
+
 # Restart shell or source .bash_profile
 
 ```
@@ -34,6 +46,13 @@ ln -s ${breezy_home}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
 # Use breezy
 
 Initialize a mycoolproject in the directory ~/projects
+
+```bash
+breezy ~/projects/mycoolproject
+
+```
+
+Refresh the project with the latest core breezy files. This just updates four files: breezy_script.r, breezy_funs.r, startup.r, and themes.r
 
 ```bash
 breezy ~/projects/mycoolproject
@@ -70,8 +89,11 @@ Default working directly is the project dir. So, within code can easily access d
 
 ### TODO
 
-* Make bash command to copy template from breezy codebase to working project
+* breezy command should have subcommands. e.g. breezy init mycoolproject.
+* make a breezy refresh mycoolproject. This copies latest versions of breezy_script.r, breezy_funs.r, themes.r, startup.r
+* breezy.sh should delete the init folder after copying
 * Make rstudio add-in to copy template to working project. https://rstudio.github.io/rstudioaddins/
+* take the misc function files out of funs and move them to a different project
 
 ### Other notes
 

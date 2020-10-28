@@ -15,23 +15,15 @@
 #   pass in a "resume" file with niches that should be processed. make a small script that makes this file
 # TODO: need to save telemetry objects. where did I save those before? strange!
 
-spsm <- suppressPackageStartupMessages
 
-spsm(library(docopt))
-spsm(library(foreach))
-spsm(library(glue))
-spsm(library(iterators))
-spsm(library(lubridate))
-spsm(library(tidyverse))
-
-select <- dplyr::select
-filter <- dplyr::filter
+library(foreach)
+library(iterators)
 
 '
 Calculates population hypervolumes based on individual hypervolumes.
 
 Usage:
-hvs_pop <dat> [--parMethod=<parMethod>] [--cores=<cores>]
+hpc [--parMethod=<parMethod>] [--cores=<cores>]
 
 Options:
 -h --help     Show this screen.
@@ -41,25 +33,16 @@ Options:
 ' -> doc
 
 #---- parameters ----#
-#NOTE: script uses niches.csv to determine which niches to run
-
-ag <- docopt(doc, version = '0.1\n')
 
 if(interactive()) {
-  #.pd <- '/Users/benc/projects/oilbirds/analysis/oilbirds'
-  .pd <- '~/projects/whitestork/results/stpp_models/huj_eobs'
-  .datPF <- 'data/obs_trim.csv' #should use obs.csv in general. should put trim logic into obs.r
   .parMethod <- 'mc' #'none', 'mc'
   .cores <- 3 #used if .parMethod is mc
 } else {
-  .pd <- getwd()
-  .datPF <- ag$dat
   .parMethod <- ifelse(is.null(ag$parMethod),'none',ag$parMethod) #need to set value b/c NULL will fail in if statement
   .cores <- ifelse(is.null(ag$cores),4,as.numeric(ag$cores))
 }
 
-#---- functions ----#
-diffmin <- function(t) round(difftime(Sys.time(), t, unit = "min"),2)
+
 
 #---- paths ----#
 .timelog <- file.path(.ctmmout,'timing.csv')
@@ -69,11 +52,6 @@ diffmin <- function(t) round(difftime(Sys.time(), t, unit = "min"),2)
 tibble(niche_name=character(),event=character(),time=character()) %>%
   write_csv(.timelog)
 
-#---- load data ----#
-niches <- read_csv(file.path(.pd,'niches.csv'),col_types=cols()) %>% filter(as.logical(run))
-
-dat0 <- read_csv(file.path(.pd,.datPF),col_types=cols()) %>%
-  filter(niche_name %in% niches$niche_name)
 
 #----
 #---- start cluster and register backend ----
