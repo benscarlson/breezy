@@ -57,18 +57,22 @@ breezy ~/projects/mycoolproject
 
 ```
 
-# Breezy workflows
+# Breezy folder structure
 
 * analysis - this is where all output from scripts go. Can make subfolders with different scenarios, slightly different datasets, more recent versions of workflow, etc.
 * data - should hold data that is provided to you. Any derived data should generally go into the analysis folder. Data that is shared across many analysis folders can also go into data/derived subfolder
 * docs - all non-code/non-data documents. manuscript versions, etc.
 * src - all source code for the project. The contents of this folder is the git repo for the project.
+  * poc - Analysis usually starts in the proof of concept folder. Any scripts in this folder should not be part the public release of code. This gives you freedom to try out different approaches, write code you are not proud of, etc. Once the analysis matures and becomes part of the formal workflow, copy or move the script to the workflow folder.
+  * workflow - This folder should contain the scripts that make up the formal workflow for your project
+    * workflow.sh - This is the bash script that contains the full list of commands to execute your project
 
-* script_template.r - this is the heart of the workflow system. Copy this to workflow or figs directory. See below for more extensive description of script_template.r
+# Breezy code
+* breezy_script.r - this is the heart of the workflow system. Copy this script and start making edits. See below for more extensive description of script_template.r
 
 # Workflow design
 
-* Script template has a lot of stuff in it. But, as a script matures you almost always end up adding all of these elements. So, why not just start with it? Also, it's much easier to delete code then to write it, so if you know you won't be using something just delete it.
+* The breezy script has a lot template code. As a script matures, I almost always end up adding all of these elements. So, why not just start with it? Also, it's much easier to delete code then to write it, so if you know you won't be using something just delete it.
 
 * Script should not perform analysis and also generate figure. Instead, one script should perform the analysis and save results in database (or csv, rdata objects, shp, etc). Second script should load this data and generate the figure.
 
