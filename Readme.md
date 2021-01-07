@@ -80,7 +80,9 @@ breezy ~/projects/mycoolproject
 
 * Always run scripts from the analysis directory.
 
-### script_template.r
+### breezy_template.r
+
+TBD 
 
 ### Other best practices
 
