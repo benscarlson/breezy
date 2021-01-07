@@ -7,14 +7,12 @@
 #' diffmin(t1)
 diffmin <- function(t,t2=Sys.time()) round(difftime(t2, t, unit = "min"),2)
 
+#' Convert standard string formatted date to POSIXct Format: 2015-01-01T13:00:51Z
+as_timestamp <- function(x) as.POSIXct(x, format='%Y-%m-%dT%H:%M:%S', tz='UTC')
+
 fext <- function(filePath){ 
   ex <- strsplit(basename(filePath), split="\\.")[[1]]
   return(ex[length(ex)])
-}
-
-#Found this function on the internet but don't have link anymore
-isAbsolute <- function(path) {
-  grepl("^(/|[A-Za-z]:|\\\\|~)", path)
 }
 
 #'Saves parameters for script run from global environment to csv

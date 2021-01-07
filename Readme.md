@@ -1,8 +1,6 @@
----
-output:
-  pdf_document: default
-  html_document: default
----
+# WARNING
+
+Breezy documentation is a work in progress. The information below is incomplete and might even be wrong in some cases.
 
 # What is breezy?
 

@@ -1,19 +1,13 @@
 #!/usr/bin/env Rscript --vanilla
 # chmod 744 script_template.r #Use to make executable
 
-#TODO: make a generic "mode" parameter. User can define modes for alternative code pathways
-#TODO: check if output directory exists and create it if it does not
-#TODO: write output parameters to a database instead of a csv file
-#TODO: if writing output to same path as an existing entry in 
-# the parameters database (i.e. overwriting), should delete old
-# parameter entries.
-#TODO: <out> assumes path is subfolder of wd. should have logic for absolute path
-#TODO: should source all files in the funs folder
+# ==== Breezy setup ====
+
 '
 Template
 
 Usage:
-script_template <out> [-t] [--seed=<seed>]
+script_template <dat> <out> [-t] [--seed=<seed>]
 script_template (-h | --help)
 
 Options:
@@ -23,16 +17,20 @@ Options:
 -t --test         Indicates script is a test run, will not save output parameters or commit to git
 ' -> doc
 
+isAbsolute <- function(path) {
+  grepl("^(/|[A-Za-z]:|\\\\|~)", path)
+}
+
 #---- Input Parameters ----#
 if(interactive()) {
   library(here)
 
   .wd <- '~/projects/project_template/analysis'
-  .script <- 'src/script_template.r' #Currently executing script
   .seed <- NULL
   .test <- TRUE
   rd <- here
   
+  .datPF <- file.path(.wd,'data/dat.csv')
   .outPF <- file.path(.wd,'figs/myfig.png')
   
 } else {
@@ -46,6 +44,8 @@ if(interactive()) {
   .test <- as.logical(ag$test)
   rd <- is_rstudio_project$make_fix_file(.script)
   
+  #.list <- trimws(unlist(strsplit(ag$list,',')))
+  .datPF <- ifelse(isAbsolute(ag$dat),ag$dat,file.path(.wd,ag$dat))
   .outPF <- ifelse(isAbsolute(ag$out),ag$out,file.path(.wd,ag$out))
 }
 
@@ -63,8 +63,10 @@ suppressWarnings(
     library(RSQLite)
   }))
 
-source(rd('src/funs/breezy_funs.r'))
-source(rd('src/funs/themes.r'))
+#Source all files in the funs directory
+list.files(rd('src/funs'),full.names=TRUE) %>%
+  walk(source)
+
 theme_set(theme_eda)
 
 #---- Local parameters ----#
@@ -84,7 +86,11 @@ invisible(assert_that(length(dbListTables(db))>0))
 std <- tbl(db,'study')
 
 #---- Load data ----#
-dat0 <- read_csv(file.path(.wd,'obsbg_anno.csv'),col_types=cols())
+message('Loading data...')
+dat0 <- read_csv(.datPF,col_types=cols()) %>%
+  inner_join(niches %>% select(niche_set,niche_name),by='niche_name')
+
+#====
 
 #---- Perform analysis ----#
 
@@ -107,8 +113,8 @@ if(fext(.outPF)=='pdf') {
 #---- Finalize script ----#
 
 if(!.test) {
-  spsm(library(git2r))
-  spsm(library(uuid))
+  library(git2r)
+  library(uuid)
   
   .runid <- UUIDgenerate()
   .parPF <- file.path(.wd,"run_params.csv")
@@ -132,7 +138,13 @@ if(!.test) {
   saveParams(.parPF)
 }
 
-dbCommit(db)
+if(.test) {
+  message('Rolling back transaction because this is a test run.')
+  dbRollback(db)
+} else {
+  dbCommit(db)
+}
+
 dbDisconnect(db)
 
 message(glue('Script complete in {diffmin(t0)} minutes'))
