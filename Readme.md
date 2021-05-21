@@ -91,6 +91,13 @@ TBD
 
 Default working directly is the project dir. So, within code can easily access data using read_csv('data/mydata.csv')
 
+Should have a main workflow scripts within wf_scripts. This should be a small number of scripts (maybe just one) that will run the analysis. 
+Don't include poc code in these workflow scripts. Make a seperate script in the poc folder that has all the code for running experimental and testing scripts.
+
+I usually have a small number of workflow scripts for the initial submission, then one script for each revision. e.g. wf_main.sh, wf_rev1.sh, wf_rev2.sh
+
+In genreal, when starting a new script, process, etc, make a folder in poc to hold the scripts and a folder in analysis to hold the results. This code and results is temporary. The code (if it becomes part of your main workflow) will transition to the src folder and final results should go into your main analysis folder.
+
 ### TODO
 
 * breezy command should have subcommands. e.g. breezy init mycoolproject.

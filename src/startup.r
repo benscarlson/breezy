@@ -11,6 +11,7 @@ suppressPackageStartupMessages({
   library(conflicted)
   library(glue)
   library(here)
+  library(tictoc)
   library(tidyverse)
   library(uuid)
 }))

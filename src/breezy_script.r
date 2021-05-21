@@ -1,25 +1,24 @@
 #!/usr/bin/env Rscript --vanilla
 # chmod 744 script_template.r #Use to make executable
 
+# This script implements the breezy philosophy: github.com/benscarlson/breezy
+
 # ==== Breezy setup ====
 
 '
 Template
 
 Usage:
-script_template <dat> <out> [-t] [--seed=<seed>]
+script_template <dat> <out> [--seed=<seed>] [-b] [-t]
 script_template (-h | --help)
 
 Options:
 -h --help     Show this screen.
 -v --version     Show version.
+-b --rollback   Rollback transaction if set to true.
 -s --seed=<seed>  Random seed. Defaults to 5326 if not passed
 -t --test         Indicates script is a test run, will not save output parameters or commit to git
 ' -> doc
-
-isAbsolute <- function(path) {
-  grepl("^(/|[A-Za-z]:|\\\\|~)", path)
-}
 
 #---- Input Parameters ----#
 if(interactive()) {
@@ -27,8 +26,9 @@ if(interactive()) {
 
   .wd <- '~/projects/project_template/analysis'
   .seed <- NULL
+  .rollback <- TRUE
   .test <- TRUE
-  rd <- here
+  rd <- here::here
   
   .datPF <- file.path(.wd,'data/dat.csv')
   .outPF <- file.path(.wd,'figs/myfig.png')
@@ -41,12 +41,15 @@ if(interactive()) {
   .wd <- getwd()
   .script <-  thisfile()
   .seed <- ag$seed
+  .rollback <- as.logical(ag$rollback)
   .test <- as.logical(ag$test)
   rd <- is_rstudio_project$make_fix_file(.script)
   
+  source(rd('src/funs/input_parse.r'))
+  
   #.list <- trimws(unlist(strsplit(ag$list,',')))
-  .datPF <- ifelse(isAbsolute(ag$dat),ag$dat,file.path(.wd,ag$dat))
-  .outPF <- ifelse(isAbsolute(ag$out),ag$out,file.path(.wd,ag$out))
+  .datPF <- makePath(ag$dat)
+  .outPF <- makePath(ag$out)
 }
 
 #---- Initialize Environment ----#
@@ -63,8 +66,8 @@ suppressWarnings(
     library(RSQLite)
   }))
 
-#Source all files in the funs directory
-list.files(rd('src/funs'),full.names=TRUE) %>%
+#Source all files in the auto load funs directory
+list.files(rd('src/funs/auto'),full.names=TRUE) %>%
   walk(source)
 
 theme_set(theme_eda)
@@ -80,7 +83,10 @@ niches <- read_csv(file.path(.wd,'ctfs/niches.csv'),col_types=cols()) %>%
   inner_join(nsets %>% select(niche_set),by='niche_set')
 
 #---- Initialize database ----#
+invisible(assert_that(file.exists(.dbPF)))
+
 db <- dbConnect(RSQLite::SQLite(), .dbPF)
+
 invisible(assert_that(length(dbListTables(db))>0))
 
 std <- tbl(db,'study')
@@ -97,10 +103,12 @@ dat0 <- read_csv(.datPF,col_types=cols()) %>%
 dbExecute(db,'PRAGMA foreign_keys=ON')
 dbBegin(db)
 
-
-
 #---- Save output ---#
+message(glue('Saving to {.outPF}'))
+
 dir.create(dirname(.outPF),recursive=TRUE,showWarnings=FALSE)
+
+datout %>% write_csv(.outPF)
 
 h=6; w=9
 if(fext(.outPF)=='pdf') {
@@ -138,7 +146,7 @@ if(!.test) {
   saveParams(.parPF)
 }
 
-if(.test) {
+if(.rollback) {
   message('Rolling back transaction because this is a test run.')
   dbRollback(db)
 } else {
