@@ -9,14 +9,15 @@
 Template
 
 Usage:
-script_template <dat> <out> [--seed=<seed>] [-b] [-t]
+script_template <dat> <out> [--db=<db>] [--seed=<seed>] [-b] [-t]
 script_template (-h | --help)
 
 Options:
 -h --help     Show this screen.
 -v --version     Show version.
--b --rollback   Rollback transaction if set to true.
+-d --db=<db> Path to movement database. Defaults to <wd>/data/move.db
 -s --seed=<seed>  Random seed. Defaults to 5326 if not passed
+-b --rollback   Rollback transaction if set to true.
 -t --test         Indicates script is a test run, will not save output parameters or commit to git
 ' -> doc
 
@@ -32,6 +33,7 @@ if(interactive()) {
   
   .datPF <- file.path(.wd,'data/dat.csv')
   .outPF <- file.path(.wd,'figs/myfig.png')
+  .dbPF <- file.path(.wd,'data/move.db')
   
 } else {
   library(docopt)
@@ -50,6 +52,11 @@ if(interactive()) {
   #.list <- trimws(unlist(strsplit(ag$list,',')))
   .datPF <- makePath(ag$dat)
   .outPF <- makePath(ag$out)
+  if(length(ag$db)==0) {
+    .dbPF <- file.path(.wd,'data/move.db')
+  } else {
+    .dbPF <- makePath(ag$db)
+  }
 }
 
 #---- Initialize Environment ----#
@@ -108,7 +115,7 @@ message(glue('Saving to {.outPF}'))
 
 dir.create(dirname(.outPF),recursive=TRUE,showWarnings=FALSE)
 
-datout %>% write_csv(.outPF)
+datout %>% write_csv(.outPF,na="")
 
 h=6; w=9
 if(fext(.outPF)=='pdf') {

@@ -83,6 +83,8 @@ source(rd('src/startup.r'))
 suppressWarnings(
   suppressPackageStartupMessages({
     library(DBI)
+    library(iterators)
+    library(foreach)
     library(RSQLite)
   }))
 
@@ -95,13 +97,11 @@ source(rd('src/funs/auto/breezy_funs.r'))
 
 dir.create(.outP,showWarnings=FALSE,recursive=TRUE)
 
-# Set up output file
-tibble(ses_id=character(), 
-       rep=numeric(),
-       niche_set=character(),
-       niche_name=character(),
-       niche_vol=numeric(),
-       minutes=numeric()) %>% write_csv(.outPF)
+# Initialize output file
+# TODO: use tidy evaluation to allow bare column names
+c('individual_id','num','minutes') %>% 
+  paste(collapse=',') %>% 
+  write_lines(.outPF)
 
 #---- Load control files ----#
 nsets <- read_csv(file.path(.wd,'ctfs/niche_sets.csv'),col_types=cols()) %>% 
@@ -112,12 +112,6 @@ niches <- read_csv(file.path(.wd,'ctfs/niches.csv'),col_types=cols()) %>%
 
 #---- Initialize database ----#
 invisible(assert_that(file.exists(.dbPF)))
-
-db <- dbConnect(RSQLite::SQLite(), .dbPF)
-
-invisible(assert_that(length(dbListTables(db))>0))
-
-std <- tbl(db,'study')
 
 #---- Load data ----#
 message('Loading data...')
@@ -162,15 +156,22 @@ foreach(i=icount(nrow(niches)),.combine='rbind') %mypar% {
     tsEnt <- Sys.time()
     niche <- niches[i,]
     
+
+    db <- dbConnect(RSQLite::SQLite(), .dbPF)
+    
+    invisible(assert_that(length(dbListTables(db))>0))
+    
+    std <- tbl(db,'study')
+    
     #Do stuff here ....
     
+    dbDisconnect(db)
+    
     #example writing to output file
-    tibble(ses_id=.sesid,
-           rep=j,
-           niche_set=nset,
-           niche_set_vol=get_volume(hvNset),
+    tibble(individual_id=niche$individual_id,
+           num=nrow(dat),
            minutes=as.numeric(diffmin(tNs))) %>% 
-      write_csv(.outPF,append=TRUE)
+      write_csv(.outPF,append=TRUE,na="")
     
     message(glue('{niche$niche_name} complete in {diffmin(tsEnt)} minutes'))
     return(TRUE)
@@ -179,7 +180,7 @@ foreach(i=icount(nrow(niches)),.combine='rbind') %mypar% {
 status %>% 
   as_tibble(.name_repair = 'minimal') %>%
   rename(status=1) %>% 
-  write_csv(.statusPF)
+  write_csv(.statusPF,na="")
 
 # ==== Finalize script ====
 if(!.test) {
