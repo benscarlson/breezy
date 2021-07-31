@@ -8,14 +8,11 @@ breezy_hpc.r <dat> <out> [--sesid=<sesid>] [--seed=<seed>] [--parMethod=<parMeth
 breezy_hpc.r (-h | --help)
 
 Control files:
-ctfs/niches.csv
-ctfs/niche_set.csv
+ctfs/individual.csv
 
 Parameters:
-dat: path to csv file. 
-  should have niche_set, niche_name, and one column for each niche axis.
-  should be a scaled dataset.
-out: path to output directory
+dat: path to input csv file. 
+out: path to output directory.
 
 Options:
 -h --help     Show this screen.
@@ -31,7 +28,7 @@ Options:
 if(interactive()) {
   library(here)
 
-  .wd <- '~/projects/ms1/analysis/rev2/dist_env_test'
+  .wd <- '~/projects/project_template/analysis'
   .seed <- NULL
   .test <- TRUE
 
@@ -39,8 +36,8 @@ if(interactive()) {
   
   .sesid <- 'test1'
   
-  .datPF <- '~/projects/ms1/data/derived/obs_anno_100_full.csv'
-  .outP <- file.path(.wd,.sesid)
+  .datPF <- file.path(.wd,'input.csv')
+  .outP <- file.path(.wd,'output')
   
   .parMethod <- NULL
   #.cores <- 7
@@ -104,11 +101,8 @@ c('individual_id','num','minutes') %>%
   write_lines(.outPF)
 
 #---- Load control files ----#
-nsets <- read_csv(file.path(.wd,'ctfs/niche_sets.csv'),col_types=cols()) %>% 
+inds <- read_csv(file.path(.wd,'ctfs/individual.csv'),col_types=cols()) %>% 
   filter(as.logical(run)) %>% select(-run)
-niches <- read_csv(file.path(.wd,'ctfs/niches.csv'),col_types=cols()) %>% 
-  filter(as.logical(run)) %>% select(-run) %>%
-  inner_join(nsets %>% select(niche_set),by='niche_set')
 
 #---- Initialize database ----#
 invisible(assert_that(file.exists(.dbPF)))
@@ -116,7 +110,7 @@ invisible(assert_that(file.exists(.dbPF)))
 #---- Load data ----#
 message('Loading data...')
 dat0 <- read_csv(.datPF,col_types=cols()) %>%
-  inner_join(niches %>% select(niche_set,niche_name),by='niche_name')
+  inner_join(inds %>% select(individual_id),by='individual_id')
 
 # ==== Start cluster and register backend ====
 if(is.null(.parMethod)) {
@@ -154,7 +148,7 @@ if(is.null(.parMethod)) {
 foreach(i=icount(nrow(niches)),.combine='rbind') %mypar% {
     #i <- 1
     tsEnt <- Sys.time()
-    niche <- niches[i,]
+    ind <- inds[i,]
     
 
     db <- dbConnect(RSQLite::SQLite(), .dbPF)
@@ -168,12 +162,12 @@ foreach(i=icount(nrow(niches)),.combine='rbind') %mypar% {
     dbDisconnect(db)
     
     #example writing to output file
-    tibble(individual_id=niche$individual_id,
+    tibble(individual_id=ind$individual_id,
            num=nrow(dat),
            minutes=as.numeric(diffmin(tNs))) %>% 
       write_csv(.outPF,append=TRUE,na="")
     
-    message(glue('{niche$niche_name} complete in {diffmin(tsEnt)} minutes'))
+    message(glue('{ind$individual_id} complete in {diffmin(tsEnt)} minutes'))
     return(TRUE)
   } -> status
 
