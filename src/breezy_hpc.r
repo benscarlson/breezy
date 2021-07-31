@@ -4,7 +4,7 @@
 
 '
 Usage:
-breezy_hpc.r <dat> <out> [--sesid=<sesid>] [--seed=<seed>] [--parMethod=<parMethod>] [--cores=<cores>] [--mpilogs=<mpilogs>] [-t] 
+breezy_hpc.r <dat> <out>  [--db=<db>] [--sesid=<sesid>] [--seed=<seed>] [--parMethod=<parMethod>] [--cores=<cores>] [--mpilogs=<mpilogs>] [-t] 
 breezy_hpc.r (-h | --help)
 
 Control files:
@@ -17,6 +17,7 @@ out: path to output directory.
 Options:
 -h --help     Show this screen.
 -v --version     Show version.
+-d --db=<db> Path to movement database. Defaults to <wd>/data/move.db
 -r --sesid=<sesid>  Id that uniquely identifies a script run
 -s --seed=<seed>  Random seed. Defaults to 5326 if not passed
 -t --test         Indicates script is a test run, will not save output parameters or commit to git
@@ -38,6 +39,7 @@ if(interactive()) {
   
   .datPF <- file.path(.wd,'input.csv')
   .outP <- file.path(.wd,'output')
+  .dbPF <- file.path(.wd,'data/move.db')
   
   .parMethod <- NULL
   #.cores <- 7
@@ -63,7 +65,11 @@ if(interactive()) {
   .outPF <- makePath(ag$out)
   
   .mpiLogP <- makePath(ifelse(is.null(ag$mpilogs),'mpilogs',ag$mpilogs))
-
+  if(length(ag$db)==0) {
+    .dbPF <- file.path(.wd,'data/move.db')
+  } else {
+    .dbPF <- makePath(ag$db)
+  }
 }
 
 # ==== Setup ====
@@ -88,7 +94,6 @@ suppressWarnings(
 source(rd('src/funs/auto/breezy_funs.r'))
 
 #---- Local parameters ----#
-.dbPF <- file.path(.wd,"data/database.db")
 
 #---- Files and directories ----#
 

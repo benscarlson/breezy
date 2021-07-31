@@ -12,6 +12,13 @@ Usage:
 script_template <dat> <out> [--db=<db>] [--seed=<seed>] [-b] [-t]
 script_template (-h | --help)
 
+Control files:
+  ctfs/individual.csv
+
+Parameters:
+  dat: path to input csv file. 
+  out: path to output directory.
+
 Options:
 -h --help     Show this screen.
 -v --version     Show version.
@@ -80,14 +87,10 @@ list.files(rd('src/funs/auto'),full.names=TRUE) %>%
 theme_set(theme_eda)
 
 #---- Local parameters ----#
-.dbPF <- file.path(.wd,"data/database.db")
 
 #---- Load control files ----#
-nsets <- read_csv(file.path(.wd,'ctfs/niche_sets.csv'),col_types=cols()) %>% 
+inds <- read_csv(file.path(.wd,'ctfs/individual.csv'),col_types=cols()) %>% 
   filter(as.logical(run)) %>% select(-run)
-niches <- read_csv(file.path(.wd,'ctfs/niches.csv'),col_types=cols()) %>% 
-  filter(as.logical(run)) %>% select(-run) %>%
-  inner_join(nsets %>% select(niche_set),by='niche_set')
 
 #---- Initialize database ----#
 invisible(assert_that(file.exists(.dbPF)))
@@ -101,7 +104,7 @@ std <- tbl(db,'study')
 #---- Load data ----#
 message('Loading data...')
 dat0 <- read_csv(.datPF,col_types=cols()) %>%
-  inner_join(niches %>% select(niche_set,niche_name),by='niche_name')
+  inner_join(inds %>% select(individual_id),by='individual_id')
 
 #====
 
@@ -109,6 +112,8 @@ dat0 <- read_csv(.datPF,col_types=cols()) %>%
 
 dbExecute(db,'PRAGMA foreign_keys=ON')
 dbBegin(db)
+
+#To stuff here...
 
 #---- Save output ---#
 message(glue('Saving to {.outPF}'))
@@ -126,6 +131,14 @@ if(fext(.outPF)=='pdf') {
 
 
 #---- Finalize script ----#
+if(.rollback) {
+  message('Rolling back transaction because this is a test run.')
+  dbRollback(db)
+} else {
+  dbCommit(db)
+}
+
+dbDisconnect(db)
 
 if(!.test) {
   library(git2r)
@@ -152,14 +165,5 @@ if(!.test) {
   #TODO: write this to a workflow database instead
   saveParams(.parPF)
 }
-
-if(.rollback) {
-  message('Rolling back transaction because this is a test run.')
-  dbRollback(db)
-} else {
-  dbCommit(db)
-}
-
-dbDisconnect(db)
 
 message(glue('Script complete in {diffmin(t0)} minutes'))

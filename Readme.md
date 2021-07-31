@@ -28,6 +28,7 @@ breezy_home=~/projects/breezy
 ts=.bash_profile_`date +%Y-%m-%d_%H-%M-%S`
 cp ~/.bash_profile ~/${ts}
 echo "export BREEZY_HOME=${breezy_home}" >> ~/.bash_profile
+echo 'export BREEZY_SCRIPT=${BREEZY_HOME}/src/breezy_script.r' >> ~/.bash_profile
 
 #Make project init script executable and add command to path
 chmod 744 ${breezy_home}/src/init/breezy.sh
