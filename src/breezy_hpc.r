@@ -39,7 +39,7 @@ if(interactive()) {
   
   .datPF <- file.path(.wd,'input.csv')
   .outP <- file.path(.wd,'output')
-  .dbPF <- file.path(.wd,'data/move.db')
+  .dbPF <- file.path(.wd,'data/mosey.db')
   
   .parMethod <- NULL
   #.cores <- 7
@@ -66,7 +66,7 @@ if(interactive()) {
   
   .mpiLogP <- makePath(ifelse(is.null(ag$mpilogs),'mpilogs',ag$mpilogs))
   if(length(ag$db)==0) {
-    .dbPF <- file.path(.wd,'data/move.db')
+    .dbPF <- file.path(.wd,'data/mosey.db')
   } else {
     .dbPF <- makePath(ag$db)
   }

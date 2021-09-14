@@ -22,7 +22,7 @@ Parameters:
 Options:
 -h --help     Show this screen.
 -v --version     Show version.
--d --db=<db> Path to movement database. Defaults to <wd>/data/move.db
+-d --db=<db> Path to movement database. Defaults to <wd>/data/mosey.db
 -s --seed=<seed>  Random seed. Defaults to 5326 if not passed
 -b --rollback   Rollback transaction if set to true.
 -t --test         Indicates script is a test run, will not save output parameters or commit to git
@@ -40,7 +40,7 @@ if(interactive()) {
   
   .datPF <- file.path(.wd,'data/dat.csv')
   .outPF <- file.path(.wd,'figs/myfig.png')
-  .dbPF <- file.path(.wd,'data/move.db')
+  .dbPF <- file.path(.wd,'data/mosey.db')
   
 } else {
   library(docopt)
@@ -59,11 +59,7 @@ if(interactive()) {
   #.list <- trimws(unlist(strsplit(ag$list,',')))
   .datPF <- makePath(ag$dat)
   .outPF <- makePath(ag$out)
-  if(length(ag$db)==0) {
-    .dbPF <- file.path(.wd,'data/move.db')
-  } else {
-    .dbPF <- makePath(ag$db)
-  }
+  .dbPF <- makePath(ifelse(length(ag$db)!=0,ag$db,'data/mosey.db'))
 }
 
 #---- Initialize Environment ----#
@@ -89,17 +85,18 @@ theme_set(theme_eda)
 #---- Local parameters ----#
 
 #---- Load control files ----#
+studies <- read_csv(file.path(.wd,'ctfs/study.csv'),col_types=cols()) %>%
+  filter(as.logical(run)) %>% select(-run)
+
 inds <- read_csv(file.path(.wd,'ctfs/individual.csv'),col_types=cols()) %>% 
   filter(as.logical(run)) %>% select(-run)
 
 #---- Initialize database ----#
 invisible(assert_that(file.exists(.dbPF)))
-
 db <- dbConnect(RSQLite::SQLite(), .dbPF)
-
 invisible(assert_that(length(dbListTables(db))>0))
 
-std <- tbl(db,'study')
+styTb <- tbl(db,'study')
 
 #---- Load data ----#
 message('Loading data...')
@@ -110,10 +107,11 @@ dat0 <- read_csv(.datPF,col_types=cols()) %>%
 
 #---- Perform analysis ----#
 
-dbExecute(db,'PRAGMA foreign_keys=ON')
+invisible(dbExecute(db,'PRAGMA foreign_keys=ON'))
 dbBegin(db)
 
-#To stuff here...
+#Do stuff here...
+p <- dat %>% ggplot(aes(x=x,y=y)) + geom_point; if(interactive()) {print(p)}
 
 #---- Save output ---#
 message(glue('Saving to {.outPF}'))
@@ -131,11 +129,18 @@ if(fext(.outPF)=='pdf') {
 
 
 #---- Finalize script ----#
+
+#-- Close transaction
 if(.rollback) {
   message('Rolling back transaction because this is a test run.')
   dbRollback(db)
 } else {
-  dbCommit(db)
+  if(rows==nrow(dat)) {
+    dbCommit(db)
+  } else {
+    message('Failed to update all rows, rolling back'); 
+    dbRollback(db)
+  }
 }
 
 dbDisconnect(db)

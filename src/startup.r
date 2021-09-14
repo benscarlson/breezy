@@ -9,13 +9,13 @@ suppressWarnings(
 suppressPackageStartupMessages({
   library(assertthat)
   library(conflicted)
+  library(fasttime)
   library(glue)
   library(here)
   library(tictoc)
   library(tidyverse)
   library(uuid)
 }))
-
 
 
 # Several common packages have conflicts with dplyr filter() and select()
