@@ -1,10 +1,50 @@
-# WARNING
-
-Breezy documentation is a work in progress. The information below is incomplete and might even be wrong in some cases.
-
 # What is breezy?
 
-Breezy is a philosophy and set of standards for organizing your code. It is not a workflow management system.
+Breezy is a philosophy and associated code base for creating scientific workflows. Scientists spend a considerable amount of time building code-based workflows for their analyses, yet there is almost no formal instruction or even information on the best way to build these workflows. Best practices from the information-technology industry, mostly focused on application coding, provide some guidance, but many of these ideas do not apply or are even unhelpful for scientific workflows. Although there are many existing workflow frameworks, these can require significant time and knowledge investment, often hide their actions behind sets of opaque functions, and are better suited for large collaborative projects. 
+
+# Why breezy?
+
+Breezy is a different approach to building lightweight scientific workflows. It provides structure for organizing code and data, templates that provide commonly used scaffolding code and allow easy conversion to bash scripts, and a command-line driven approach to workflow execution that significantly enhances reproducibility. In addition, in recognition that most effort goes into the development of scripts, breezy is built around the full development lifecycle, with many features that allow scientists to seamlessly promote code from a hacky proof-of-concept to a formal analysis script. This includes features that allow streamlined development for HPC scripts using a seven-step development lifecycle.
+
+# The breezy philosophy
+
+Many useful and important best-practices from the IT industry and application development are relevant to the design of scientific workflows (use of configuration files, loose coupling of code, etc.). Breezy adopts many of these practices. However, there are some key differences in how application and workflow code is used. In application development, coders are encouraged to write small, general functions (e.g. the DRY principle) that are rigorously unit tested. This is because application code is released in cycles, and once released a function might be executed billions of times by millions of users (think of some core sub-routine in MacOS). In contrast, in small scientific workflows, a scientists might spent days or weeks developing an analysis script, culminating in a final run with the full dataset and final parameters. If the the results look good, this code might never be executed again!
+
+In addition, developing general functions that span across multiple projects or scripts can erode usability. As time goes on, it is often the case that you need to make small tweaks to your functions or add functionality. But in doing so, these changes often break older script that rely on the functions. This is the purpose of unit tests--to rigorously test all functionality to make sure nothing is broken. But is it worthwhile to retest your entire code base, even for projects that are years old and code that likely will never be executed again?
+
+Instead of small general functions, breezy instead is designed around relatively small, independent scripts. Each script should be isoclated from code changes in other scripts, except where scripts share inputs or outputs. The core scaffolding code is duplicated within each script. This allows researchers the flexibility to change any aspect of a script without fear of impacting other functionality. Although breezy does have some general functions, these are very small and the function code is not shared across projects. User-defined functions also make sense at times, but again these functions should not be shared across projects, but rather a project should receive its own copy of the function code.
+
+## Many small scripts
+
+A core component of breezy is to separate your analysis into relatively small scripts that can be executed from the command line. A single bash workflow script (often executed manually) calls scripts in the correct order and defines input parameters.
+
+Scripts should generally peform a single operation and save the results to a csv file, an rds object, or a database. For example, in a traditional R script you might perform complex data management actions such as subsetting based on some criteria, transforming variables, joining with other datasets, etc. The script then runs models on the resulting data, and finally outputs some figures. But what happens at some later point when you want to change your models? Or update the figure? You need to work through the entire script, even parts that you don't need to touch. Under breezy, you would split this script into three (or maybe even more) seperate breezy scripts.
+
+* filter_and_merge.r
+* models.r
+* figure.r
+
+Each script should save its results to disk, and be passed (via input parameters) to the next script, with the sequence of execution handled by a bash workflow script. This design is much more flexible. For example, if you wanted to create a new figure based on the model outputs, you could just create a new script (figure2.r) and specify the model results as inputs.
+
+## Focused operations over many entities, rather than complex operations over single entities.
+
+Given the traditional R script described above, say you had to run the analysis over a really large dataset. It might be tempting to make this work by running the entire script over a single entity, one entity at a time (or perhaps even in parallel). This is a common approach but not ideal because the script is still complex, difficult to debug, and does not take advantage of R's rich functionality for data manipulation through packages such as dplyr or data.table. Intead, it is much better to run all entities through each step in the workflow. If you need to paralellize, do parallization within a script, not across all scripts in the workflow. This makes scripts easier to debug, since you are doing relatively simple operations (even if over many entities). This design also lets you parallize over less complex operations, which simplifies debugging. For example, in the breezy workflow above, you might only need to parallize over the model estimation. In this case you only need to debug parallel code in models.r, instead of over the entire workflow. This is especially beneficial when using high performance cluster.
+
+## Control files
+
+A second key concept is the use of control files. A common practice in R is to load an entire dataset into memory and then loop through the dataset performing some operation on each entity in the dataset. But often it is necessary to run the script on a subset of the entities, so this approach requires making changes to the code for each desired subset. Breezy makes use of a special type of configuration file called a control file. A control file contains a list of all entities, and a 'run' column. A breezy script will only run the script for indicated entities. In the example below, entities are individuals. The script will perform operations for animal_1 and animal_2, but not animal_3. In addition to providing more fine-grained control, aiding script development and processing of subsets, the control file can also provide a permanent record of which entities were part of a particular analysis. Finally, use of control files sets up the script to use a database instead of a csv file. 
+
+| individual | run |
+|------------|-----|
+| animal_1 | 1 |
+| animal_2 | 1 |
+| animal_3 | 0 |
+
+
+## Other features
+
+* Input parameters - The breezy template uses docopt, which is a human readable system for defining and managing input parameters. Just write your help text and docopt will parse it and make parameters available to you in the R environment.
+* Path management - seamlessly transition from interactive development to command line driven execution
 
 # Use breezy manually
 
@@ -58,55 +98,3 @@ breezy ~/projects/mycoolproject
 
 ```
 
-# Breezy folder structure
-
-* analysis - this is where all output from scripts go. Can make subfolders with different scenarios, slightly different datasets, more recent versions of workflow, etc.
-* data - should hold data that is provided to you. Any derived data should generally go into the analysis folder. Data that is shared across many analysis folders can also go into data/derived subfolder
-* docs - all non-code/non-data documents. manuscript versions, etc.
-* src - all source code for the project. The contents of this folder is the git repo for the project.
-  * poc - Analysis usually starts in the proof of concept folder. Any scripts in this folder should not be part the public release of code. This gives you freedom to try out different approaches, write code you are not proud of, etc. Once the analysis matures and becomes part of the formal workflow, copy or move the script to the workflow folder.
-  * workflow - This folder should contain the scripts that make up the formal workflow for your project
-    * workflow.sh - This is the bash script that contains the full list of commands to execute your project
-
-# Breezy code
-* breezy_script.r - this is the heart of the workflow system. Copy this script and start making edits. See below for more extensive description of script_template.r
-
-# Workflow design
-
-* The breezy script has a lot template code. As a script matures, I almost always end up adding all of these elements. So, why not just start with it? Also, it's much easier to delete code then to write it, so if you know you won't be using something just delete it.
-
-* Script should not perform analysis and also generate figure. Instead, one script should perform the analysis and save results in database (or csv, rdata objects, shp, etc). Second script should load this data and generate the figure.
-
-* In general most scripts start in the poc folder. Figure everything out, then copy the script to the figs or workflow folder. Make this file into an executable script. Remove extraneous analyses, tests, and eda figures that you don't want to save.
-
-* Always run scripts from the analysis directory.
-
-### breezy_template.r
-
-TBD 
-
-### Other best practices
-
-* When receiving data, save in data directory as their_data.csv, then save the email in the same folder as their_data_email.pdf
-
-
-Default working directly is the project dir. So, within code can easily access data using read_csv('data/mydata.csv')
-
-Should have a main workflow scripts within wf_scripts. This should be a small number of scripts (maybe just one) that will run the analysis. 
-Don't include poc code in these workflow scripts. Make a seperate script in the poc folder that has all the code for running experimental and testing scripts.
-
-I usually have a small number of workflow scripts for the initial submission, then one script for each revision. e.g. wf_main.sh, wf_rev1.sh, wf_rev2.sh
-
-In genreal, when starting a new script, process, etc, make a folder in poc to hold the scripts and a folder in analysis to hold the results. This code and results is temporary. The code (if it becomes part of your main workflow) will transition to the src folder and final results should go into your main analysis folder.
-
-### TODO
-
-* breezy command should have subcommands. e.g. breezy init mycoolproject.
-* make a breezy refresh mycoolproject. This copies latest versions of breezy_script.r, breezy_funs.r, themes.r, startup.r
-* breezy.sh should delete the init folder after copying
-* Make rstudio add-in to copy template to working project. https://rstudio.github.io/rstudioaddins/
-* take the misc function files out of funs and move them to a different project
-
-### Other notes
-
-* Does not make sense to make breezy into an r package.

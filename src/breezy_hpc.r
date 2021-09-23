@@ -100,9 +100,7 @@ source(rd('src/funs/auto/breezy_funs.r'))
 dir.create(.outP,showWarnings=FALSE,recursive=TRUE)
 
 # Initialize output file
-# TODO: use tidy evaluation to allow bare column names
-c('individual_id','num','minutes') %>% 
-  paste(collapse=',') %>% 
+'individual_id,num,minutes' %>% 
   write_lines(.outPF)
 
 #---- Load control files ----#
@@ -157,7 +155,6 @@ foreach(i=icount(nrow(niches)),.combine='rbind') %mypar% {
     
 
     db <- dbConnect(RSQLite::SQLite(), .dbPF)
-    
     invisible(assert_that(length(dbListTables(db))>0))
     
     std <- tbl(db,'study')
