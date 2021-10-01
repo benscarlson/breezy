@@ -55,13 +55,13 @@ A common practice in R is to load an entire dataset into memory and then loop th
 
 # Install breezy
 
-### Set up bash profile
-
 ### Get the code
 
 ```bash
 git clone git@github.com:benscarlson/breezy.git ~/projects/breezy
 ```
+
+### Set up bash profile
 
 ```bash
 # Save a backup of .bash_profile first
