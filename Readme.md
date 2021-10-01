@@ -55,30 +55,55 @@ A common practice in R is to load an entire dataset into memory and then loop th
 
 # Install breezy
 
+### Set up bash profile
+
 ```bash
 
-# Set breezy_home locally
-breezy_home=~/projects/breezy
-
 # Download repo code
+git clone git@github.com:benscarlson/breezy.git ~/projects/breezy
 
-
-# Set breezy_home permanantly
 # Save a backup of .bash_profile first
 ts=.bash_profile_`date +%Y-%m-%d_%H-%M-%S`
 cp ~/.bash_profile ~/${ts}
-echo "export BREEZY_HOME=${breezy_home}" >> ~/.bash_profile
-echo 'export BREEZY_SCRIPT=${BREEZY_HOME}/src/breezy_script.r' >> ~/.bash_profile
 
-#Make project init script executable and add command to path
-chmod 744 ${breezy_home}/src/init/breezy.sh
-ln -s ${breezy_home}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
-
-#Do the same for breezy_refresh
-chmod 744 ${breezy_home}/src/init/breezy_refresh.sh
-ln -s ${breezy_home}/src/init/breezy_refresh.sh ~/bin/breezy_refresh #Make sure ~/bin is in path
+# Add BREEZY_HOME environment variable
+echo "export BREEZY_HOME=~/projects/breezy" >> ~/.bash_profile
 
 # Restart shell or source .bash_profile
+source ~/.bash_profile
+
+```
+
+### Initialize the breezy command
+
+```bash
+
+#Make project init script executable and add command to path
+chmod 744 ${BREEZY_HOME}/src/init/breezy.sh
+ln -s ${BREEZY_HOME}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
+
+```
+
+### Install docopts for bash
+
+This follows the instructions in the pre-built binaries section
+https://github.com/docopt/docopts
+
+```bash
+
+git clone https://github.com/docopt/docopts.git ~/projects/docopts
+cd ~/projects/docopts
+./get_docopts.sh
+
+```
+
+This will create a binary file called e.g. docopts_darwin_64 on a mac. 
+Rename this to docopts, then copy to the /usr/local/bin directory
+
+```bash
+
+mv docopts_darwin_64 docopts
+cp docopts docopts.sh /usr/local/bin
 
 ```
 
