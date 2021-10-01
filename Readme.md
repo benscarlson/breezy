@@ -57,11 +57,13 @@ A common practice in R is to load an entire dataset into memory and then loop th
 
 ### Set up bash profile
 
+### Get the code
+
 ```bash
-
-# Download repo code
 git clone git@github.com:benscarlson/breezy.git ~/projects/breezy
+```
 
+```bash
 # Save a backup of .bash_profile first
 ts=.bash_profile_`date +%Y-%m-%d_%H-%M-%S`
 cp ~/.bash_profile ~/${ts}
@@ -71,17 +73,14 @@ echo "export BREEZY_HOME=~/projects/breezy" >> ~/.bash_profile
 
 # Restart shell or source .bash_profile
 source ~/.bash_profile
-
 ```
 
 ### Initialize the breezy command
 
 ```bash
-
 #Make project init script executable and add command to path
 chmod 744 ${BREEZY_HOME}/src/init/breezy.sh
 ln -s ${BREEZY_HOME}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
-
 ```
 
 ### Install docopts for bash
