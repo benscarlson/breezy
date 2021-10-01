@@ -114,11 +114,3 @@ Initialize a mycoolproject in the directory ~/projects
 breezy ~/projects/mycoolproject
 
 ```
-
-Refresh the project with the latest core breezy files. This just updates four files: breezy_script.r, breezy_funs.r, startup.r, and themes.r
-
-```bash
-breezy ~/projects/mycoolproject
-
-```
-
