@@ -6,3 +6,7 @@ makePath <- function(path,wd=getwd()) {
   path <- trimws(path)
   ifelse(isAbsolute(path),path,file.path(wd,path))
 }
+
+parseCSL <- function(val) {
+  return(trimws(unlist(strsplit(val,','))))
+}

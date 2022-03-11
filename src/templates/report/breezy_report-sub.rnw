@@ -1,0 +1,12 @@
+
+\section*{\Sexpr{escapeForLatex(sectionTitle)}}
+
+
+<<echo=FALSE, warning=FALSE, message=FALSE, fig.align='center', fig.width=7, dpi=300, dev='CairoJPEG'>>=
+#Do stuff here...
+  dat %>% ggplot(aes(x=x,y=y)) + geom_point; if(interactive()) {print(p)}
+}
+
+@
+
+\newpage

@@ -1,0 +1,51 @@
+%TODO: fix section font size, it is too big if I set report font size to 12pt. See: https://tex.stackexchange.com/questions/59726/change-size-of-section-subsection-subsubsection-paragraph-and-subparagraph-ti
+%\documentclass[12pt]{report}
+\documentclass{report}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{float}
+\usepackage[margin=0.7in]{geometry}
+\setlist{itemsep=1pt}
+\setlength{\parskip}{1em}
+\renewenvironment{knitrout}{\vspace{1em}}{\vspace{1em}}
+
+<<echo=FALSE, warning=FALSE, message=FALSE>>=
+
+#---- parameters ----
+#This script should be called from breezy_knit.r template, which handles setup of all parameters
+
+@
+
+%\title{}
+
+\begin{document}
+
+\Sexpr{escapeForLatex(study$study_name)}
+
+%\maketitle
+
+%\section*{}
+
+<<echo=FALSE, warning=FALSE, message=FALSE>>=
+
+@
+
+\section*{}
+
+<<echo=FALSE, warning=FALSE, message=FALSE, include=FALSE>>=
+
+out=NULL
+
+for(j in 1:nrow(dat0)) {
+  message(glue('Segment {j} of {nrow(segs)}'))
+  #j <- 1
+  row <- segs[j,]
+  sectionTitle <- glue('{row$local_identifier} (seg name: {row$seg_name})')
+  out <- c(out,knit_child('breezy_report-sub.rnw'))
+}
+
+@
+
+\Sexpr{paste(out,collapse='\n')}
+
+\end{document}
