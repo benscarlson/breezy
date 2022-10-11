@@ -8,7 +8,7 @@
 Template
 
 Usage:
-breezy_script.r <dat> <out> [--db=<db>] [--seed=<seed>] [-b]
+breezy_script.r <sesnm> <dat> <out> [--db=<db>] [--seed=<seed>] [-b]
 breezy_script.r (-h | --help)
 
 Control files:
@@ -18,6 +18,7 @@ Control files:
 Parameters:
   dat: path to input csv file. 
   out: path to output directory.
+  sesnm: session name.
 
 Options:
 -h --help     Show this screen.
@@ -27,7 +28,7 @@ Options:
 -b --rollback   Rollback transaction if set to true.
 ' -> doc
 
-#---- Input Parameters ----#
+#---- Input Parameters ----
 if(interactive()) {
   library(here)
 
@@ -39,6 +40,7 @@ if(interactive()) {
   .datPF <- file.path(.wd,'data/dat.csv')
   .dbPF <- file.path(.wd,'data/mosey.db')
   .outPF <- file.path(.wd,'figs/myfig.pdf')
+  .sesnm <- 'test1'
 } else {
   library(docopt)
   library(rprojroot)
@@ -52,13 +54,13 @@ if(interactive()) {
   
   source(rd('src/funs/input_parse.r'))
   
-  #.list <- trimws(unlist(strsplit(ag$list,',')))
   .datPF <- makePath(ag$dat)
-  .outPF <- makePath(ag$out)
   .dbPF <- makePath(ifelse(length(ag$db)!=0,ag$db,'data/mosey.db'))
+  .outPF <- makePath(ag$out)
+  .sesnm <- ag$sesnm
 }
 
-#---- Initialize Environment ----#
+#---- Initialize Environment ----
 if(!is.null(.seed)) {message(paste('Random seed set to',.seed)); set.seed(as.numeric(.seed))}
 
 t0 <- Sys.time()
@@ -73,10 +75,11 @@ suppressWarnings(
 
 #Source all files in the auto load funs directory
 list.files(rd('src/funs/auto'),full.names=TRUE) %>% walk(source)
+source(rd('src/funs/themes.r'))
 
 theme_set(theme_eda)
 
-#---- Local parameters ----#
+#---- Local parameters ----
 
 #---- Load control files ----#
 studies <- read_csv(file.path(.wd,'ctfs/study.csv'),col_types=cols()) %>%
@@ -92,29 +95,44 @@ invisible(assert_that(length(dbListTables(db))>0))
 
 styTb <- tbl(db,'study')
 
-#---- Load data ----#
+#---- Load data ----
 message('Loading data...')
+
+sesid <- getSesId(.sesnm,'table name',db)
+
 dat0 <- read_csv(.datPF,col_types=cols()) %>%
   inner_join(inds %>% select(individual_id),by='individual_id')
 
-#====
+dat <- 'select * from table' %>%
+  glue_sql(.con=db) %>% dbGetQuery(db,.) %>% tibble
 
-#---- Perform analysis ----#
+
+#---- Perform analysis ----
 
 #Do stuff here...
 p <- dat %>% ggplot(aes(x=x,y=y)) + geom_point; if(interactive()) {print(p)}
 
-#---- Save output ---#
+#---- Save output ----
 
 #---- Saving to the database ----#
 
 invisible(dbExecute(db,'PRAGMA foreign_keys=ON'))
 dbBegin(db)
 
-rows <- dat %>%
-  dbAppendTable(db,'table',.)
+#---- Appending rows ----#
+dat %>%
+  dbAppendTable(db,'table',.) %>%
+  checkRows(nrow(dat),db)
 
-if(rows=!nrow(dat)) {
+#---- Updating rows ----#
+rs <- dbSendStatement(db, 'update table set col2 = $col2 where id=$id')
+
+dbBind(rs,dat)
+
+rows <- dbGetRowsAffected(rs)
+dbClearResult(rs)
+
+if(rows != nrow(dat)) {
   message('Rows did not match. Rolling back.'); dbRollback(db)
   stop('Stopping script')
 }

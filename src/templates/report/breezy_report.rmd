@@ -1,0 +1,76 @@
+---
+title: "Breezy Report"
+output: html_document
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = "~/projects/myproject/analysis/poc",
+      output_file = 'report_name.html'
+    )
+  })
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+knitr::opts_chunk$set(fig.width=10)
+#knitr::opts_chunk$set(include = FALSE)
+
+#library(here)
+
+.wd <- '~/projects/myproject/analysis/poc'
+
+.seed <- NULL
+.rollback <- TRUE
+#rd <- here::here
+rd <- function(x) file.path('~/projects/ms3',x)
+
+.dbPF <- '~/projects/ms2/analysis/main/data/mosey.db'
+.sesnm <- 'full_wf_hv250'
+
+#---- Initialize Environment ----#
+if(!is.null(.seed)) {message(paste('Random seed set to',.seed)); set.seed(as.numeric(.seed))}
+
+t0 <- Sys.time()
+
+source(rd('src/startup.r'))
+
+#---- Libraries ----
+suppressWarnings(
+  suppressPackageStartupMessages({
+    library(DBI)
+    library(RSQLite)
+  }))
+
+#Source all files in the auto load funs directory
+list.files(rd('src/funs/auto'),full.names=TRUE) %>% walk(source)
+source(rd('src/funs/themes.r'))
+source(rd('src/funs/session.r'))
+
+theme_set(theme_eda)
+
+#---- Local parameters ----
+.filePF <- 'data/myfile.csv'
+
+#---- Initialize database ----#
+invisible(assert_that(file.exists(.dbPF)))
+db <- dbConnect(RSQLite::SQLite(), .dbPF)
+invisible(assert_that(length(dbListTables(db))>0))
+
+#---- Load data ----#
+message('Loading data...')
+
+sesid <- getSesId(.sesnm,'hypervol',db)
+
+dat0 <- 'select * from table' %>%
+  glue_sql(.con=db) %>% dbGetQuery(db,.) %>% tibble
+
+file0 <- read_csv(.myFile,col_types=cols())
+
+```
+
+### Content
+
+```{r}
+
+```

@@ -158,7 +158,7 @@ dir.create(.outP,recursive=TRUE,showWarnings=FALSE)
   )
   
   #---- Save output ---#
-  outPF <- file.path(.outP,'{reportBase}.pdf')
+  outPF <- file.path(.outP,glue('{reportBase}.pdf'))
   #outPF <- file.path(.outP,'{studyName}.pdf') #Use with study loop
   
   message(glue('Saving to {outPF}'))
