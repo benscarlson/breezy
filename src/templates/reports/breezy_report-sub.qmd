@@ -1,0 +1,20 @@
+---
+format: html
+---
+
+```{r}
+
+
+```
+
+## `r glue('{indyr$local_identifier}, year: {indyr$year}, ind id: {indyr$individual_id}')`
+
+<!-- Show error message if bpr_win did not complete successfully -->
+```{r}
+#| eval: !expr (!success[[segtypes$bpr_win]] & failMessage[[segtypes$bpr_win]])
+#| output: asis
+
+cat(seg %>% filter(seg_type==segtypes$bpr_win) %>% pull('fail_reason'),'\n')
+
+```
+

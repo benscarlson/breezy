@@ -4,107 +4,96 @@
 
 '
 Usage:
-breezy_hpc.r <dat> <out>  [--db=<db>] [--sesid=<sesid>] [--seed=<seed>] [--parMethod=<parMethod>] [--cores=<cores>] [--mpilogs=<mpilogs>] [-t] 
-breezy_hpc.r (-h | --help)
+breezy_hpc.r <dat> <out>  [--db=<db>] [--seed=<seed>] [--parMethod=<parMethod>] [--cores=<cores>] [--mpilogs=<mpilogs>]
 
 Control files:
-ctfs/individual.csv
+  ctfs/entity.csv
 
 Parameters:
-dat: path to input csv file. 
-out: path to output directory.
+  dat: path to input csv file. 
+  out: path to output directory.
 
 Options:
--h --help     Show this screen.
--v --version     Show version.
 -d --db=<db> Path to movement database. Defaults to <wd>/data/move.db
--r --sesid=<sesid>  Id that uniquely identifies a script run
--s --seed=<seed>  Random seed. Defaults to 5326 if not passed
--t --test         Indicates script is a test run, will not save output parameters or commit to git
+-s --seed=<seed>  Random seed.
 -p --parMethod=<parMethod>  Either <mpi | mc>. If not passed in, script will run sequentially.
 -c --cores=<cores>  The number of cores
 -m --mpilogs=<mpilogs> Directory for the mpi log files
+
 ' -> doc
 
 if(interactive()) {
-  library(here)
 
-  .wd <- '~/projects/project_template/analysis'
-  .seed <- NULL
-  .test <- TRUE
-
-  rd <- here
-  
-  .sesid <- 'test1'
+  .pd <- here::here()
+  .wd <- file.path(.pd,'analysis')
   
   .datPF <- file.path(.wd,'input.csv')
+  .dbPF <- file.path(.wd,'data/duck.db')
+  .cores <- 7
   .outP <- file.path(.wd,'output')
-  .dbPF <- file.path(.wd,'data/mosey.db')
-  
   .parMethod <- NULL
-  #.cores <- 7
+  .seed <- NULL
+
 } else {
-  library(docopt)
-  library(rprojroot)
 
-  ag <- docopt(doc, version = '0.1\n')
+  ag <- docopt::docopt(doc, version = '0.1\n')
   
+  .script <-  whereami::thisfile()
+  
+  .pd <- rprojroot::is_rstudio_project$make_fix_file(.script)()
   .wd <- getwd()
-  .script <-  thisfile()
-  .seed <- ag$seed
-  .test <- as.logical(ag$test)
-  rd <- is_rstudio_project$make_fix_file(.script)
-  .sesid <- ag$sesid
-  .parMethod <- ag$parMethod
-  .cores <- ag$cores
-
-  source(rd('src/funs/input_parse.r'))
   
-  #.list <- trimws(unlist(strsplit(ag$list,',')))
+  source(file.path(.pd,'src','funs','input_parse.r'))
+  
   .datPF <- makePath(ag$dat)
+  .dbPF <- makePath(ag$db,'data/duck.db')
+  .cores <- parseParam(ag$cores) #TODO: is ag$cores text so I need to parse?
+  .mpiLogP <- makePath(ag$mpilogs,'mpilogs')
   .outPF <- makePath(ag$out)
-  
-  .mpiLogP <- makePath(ifelse(is.null(ag$mpilogs),'mpilogs',ag$mpilogs))
-  if(length(ag$db)==0) {
-    .dbPF <- file.path(.wd,'data/mosey.db')
-  } else {
-    .dbPF <- makePath(ag$db)
-  }
+  .parMethod <- ag$parMethod
+  .seed <- parseParam(ag$seed)
+
 }
 
 # ==== Setup ====
 
 #---- Initialize Environment ----#
 
-.seed <- ifelse(is.null(.seed),5326,as.numeric(.seed)) 
+pd <- function(...) file.path(.pd,...)
+wd <- function(...) file.path(.wd,...)
 
-set.seed(.seed)
+if(!is.null(.seed)) {message(paste('Random seed set to',.seed)); set.seed(as.numeric(.seed))}
+
 t0 <- Sys.time()
 
-source(rd('src/startup.r'))
+source(pd('src/startup.r'))
 
 suppressWarnings(
   suppressPackageStartupMessages({
     library(DBI)
     library(iterators)
     library(foreach)
-    library(RSQLite)
+    library(duckdb)
   }))
 
-source(rd('src/funs/auto/breezy_funs.r'))
+list.files(pd('src/funs/auto'),full.names=TRUE) %>% walk(source)
 
-#---- Local parameters ----#
+#---- Local functions ----
+myfunction_qs <- quietly(safely(myfunction))
+
+#---- Local parameters ----
+.statusPF <- wd('status.csv')
 
 #---- Files and directories ----#
 
 dir.create(.outP,showWarnings=FALSE,recursive=TRUE)
 
 # Initialize output file
-'individual_id,num,minutes' %>% 
+'ent_id,num,minutes' %>% 
   write_lines(.outPF)
 
 #---- Load control files ----#
-inds <- read_csv(file.path(.wd,'ctfs/individual.csv'),col_types=cols()) %>% 
+ents <- read_csv(file.path(.wd,'ctfs/entities.csv')) %>% 
   filter(as.logical(run)) %>% select(-run)
 
 #---- Initialize database ----#
@@ -147,30 +136,34 @@ if(is.null(.parMethod)) {
   stop('Invalid parallel method')
 }
 
+message(glue('Running for {nrow(ents)} entities'))
+
 # ==== Perform analysis ====
 foreach(i=icount(nrow(niches)),.combine='rbind') %mypar% {
     #i <- 1
-    tsEnt <- Sys.time()
-    ind <- inds[i,]
+    tsTask <- Sys.time()
+    ent <- ents[i,]
     
-
-    db <- dbConnect(RSQLite::SQLite(), .dbPF)
+    db <- dbConnect(duckdb(), dbdir=.dbPF, read_only=TRUE)
     invisible(assert_that(length(dbListTables(db))>0))
     
-    std <- tbl(db,'study')
-    
+    tsMod <- Sys.time()
     #Do stuff here ....
     
-    dbDisconnect(db)
+    dbDisconnect(db,shutdown=TRUE)
     
     #example writing to output file
-    tibble(individual_id=ind$individual_id,
+    tibble(ent_id=ent$end_id,
            num=nrow(dat),
-           minutes=as.numeric(diffmin(tNs))) %>% 
+           minutes=as.numeric(diffmin(tsMod))) %>% 
       write_csv(.outPF,append=TRUE,na="")
     
-    message(glue('{ind$individual_id} complete in {diffmin(tsEnt)} minutes'))
-    return(TRUE)
+    message(glue('{spp$spid} ({i} of {nrow(species)}) is complete in {diffmin(tsEnt)} minutes'))
+    
+    return(tibble(spid=ent$ent_id,
+      task_success=TRUE,
+      task_mts=as.numeric(diffmin(tsTask))))
+    
   } -> status
 
 status %>% 
@@ -178,35 +171,7 @@ status %>%
   rename(status=1) %>% 
   write_csv(.statusPF,na="")
 
-# ==== Finalize script ====
-if(!.test) {
-  suppressWarnings(
-    suppressPackageStartupMessages({
-      library(git2r)
-      library(uuid)
-    }))
-  
-  .runid <- UUIDgenerate()
-  .parPF <- file.path(.wd,"run_params.csv")
-  
-  #Update repo and pull out commit sha
-  repo <- repository(rd('src'))
-  
-  rstat <- status(repo)
-  if(length(rstat$staged) + 
-     length(rstat$unstaged) + 
-     length(rstat$untracked) > 0) {
-    add(repo,'.')
-    commit(repo, glue('script auto update. runid: {.runid}'))
-  }
-  
-  
-  .git_sha <- sha(repository_head(repo))
-  
-  #Save all parameters to csv for reproducibility
-  #TODO: write this to a workflow database instead
-  saveParams(.parPF)
-}
+#---- Finalize script ----
 
 message(glue('Script complete in {diffmin(t0)} minutes'))
 

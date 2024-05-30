@@ -40,6 +40,13 @@ A common practice in R is to load an entire dataset into memory and then loop th
 | animal_2 | 1 |
 | animal_3 | 0 |
 
+| Name | Means |
+|------------|-----|
+| .wd | Path to the working directory |
+| .pd | Path to the project directory |
+| <var>P | Variable is a path to a directory |
+| <var>F | Variable is a file name without a path |
+| <var>PF | Variable has a path and file name |
 
 ## Other features
 
@@ -65,14 +72,16 @@ git clone git@github.com:benscarlson/breezy.git ~/projects/breezy
 
 ```bash
 # Save a backup of .bash_profile first
-ts=.bash_profile_`date +%Y-%m-%d_%H-%M-%S`
-cp ~/.bash_profile ~/${ts}
+ts=.zshrc_`date +%Y-%m-%d_%H-%M-%S`
+cp ~/.zshrc ~/${ts}
 
 # Add BREEZY_HOME environment variable
-echo "export BREEZY_HOME=~/projects/breezy" >> ~/.bash_profile
+echo "export BREEZY_HOME=~/projects/breezy" >> ~/.zshrc
 
-# Restart shell or source .bash_profile
-source ~/.bash_profile
+# Restart shell or source .zshrc
+exec zsh #Restart the shell
+source ~/.zshrc #Source .zshrc
+
 ```
 
 ### Initialize the breezy command
@@ -80,7 +89,16 @@ source ~/.bash_profile
 ```bash
 #Make project init script executable and add command to path
 chmod 744 ${BREEZY_HOME}/src/init/breezy.sh
-ln -s ${BREEZY_HOME}/src/init/breezy.sh ~/bin/breezy #Make sure ~/bin is in path
+
+mkdir -p ~/bin
+ln -s ${BREEZY_HOME}/src/init/breezy.sh ~/bin/breezy
+
+#Make sure ~/bin is in path. Make sure to use single quotes
+#Double quotes will expand the $PATH variable
+echo 'export PATH=~/bin:$PATH' >> ~/.zshrc
+
+exec zsh #Restart the shell
+
 ```
 
 ### Install docopts for bash
@@ -89,6 +107,9 @@ This follows the instructions in the pre-built binaries section
 https://github.com/docopt/docopts
 
 ```bash
+
+#requires wget
+brew install wget
 
 git clone https://github.com/docopt/docopts.git ~/projects/docopts
 cd ~/projects/docopts

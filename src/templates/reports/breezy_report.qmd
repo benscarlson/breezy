@@ -1,0 +1,158 @@
+---
+title: "Report"
+format: 
+  html:
+    self-contained: true
+    fig-format: jpeg
+execute: 
+  echo: false
+  message: false
+  warning: false
+params:
+  pd: ~/projects/<proj>
+  wd: NULL
+  db: ~/projects/<proj>/analysis/main/data/database.db
+  sesnm: NULL
+  seed: NULL
+  
+---
+
+```{r setup}
+#| include: false
+
+#Note interactive() is FALSE when clicking the render button
+if(interactive()) {
+  .pd <- '~/projects/<proj>'
+  .wd <- file.path(.pd,'analysis/main')
+  .dbPF <- file.path(.pd,'analysis/main/data/database.db')
+  .seed <- NULL
+  .sesnm <- 'main'
+} else {
+  .pd <- params$pd
+  .wd <- params$wd
+  .dbPF <- params$db
+  .seed <- params$seed
+  .sesnm <- params$sesnm
+}
+
+pd <- function(...) file.path(.pd,...)
+wd <- function(...) file.path(.wd,...)
+
+#---- Initialize Environment ----#
+if(!is.null(.seed)) {message(paste('Random seed set to',.seed)); set.seed(as.numeric(.seed))}
+
+source(pd('src/startup.r'))
+
+invisible(assert_that(!is.null(.dbPF)))
+invisible(assert_that(!is.null(.sesnm)))
+invisible(assert_that(!is.null(.wd)))
+
+#---- Libraries ----
+suppressWarnings(
+  suppressPackageStartupMessages({
+    library(knitr)
+    library(patchwork)
+    library(duckdb)
+  }))
+
+tic() #For report execution time
+
+#Source all files in the auto load funs directory
+list.files(pd('src/funs/auto'),full.names=TRUE) %>% walk(source)
+source(pd('src/funs/themes.r'))
+
+theme_set(theme_eda)
+
+#---- Local functions ----
+
+#---- Local parameters ----
+
+#---- Files and folders ----
+
+#---- Initialize database ----#
+invisible(assert_that(file.exists(.dbPF)))
+db <- dbConnect(duckdb(), dbdir=.dbPF, read_only=TRUE)
+invisible(assert_that(length(dbListTables(db))>0))
+
+#---- Load data ----
+message('Loading data...')
+
+.sesid <- getSesId(.sesnm,'seg_group',db)
+
+hvlevels <- enum('hv_level',db)
+
+study <- 'select study_name, study_id from study where study_id = {.studyid}' %>%
+  glue_sql(.con=db) %>% dbGetQuery(db,.) %>% tibble
+
+message(glue('{study$study_name} (id: {study$study_id})'))
+
+sql <- 'select * from table' 
+
+segs <- sql %>%
+  #filterEntity(.entity,db,ctfs=file.path(.wd,'ctfs')) %>% 
+  glue_sql(.con=db) %>% dbGetQuery(db,.) %>% tibble %>%
+  mutate(across(is.POSIXct,fastPOSIXct,tz='UTC'),
+         success=as.logical(success))
+
+```
+
+## Session: `r .sesnm`
+#### `r strftime(Sys.time(),format='%Y-%m-%d')`
+
+```{r}
+#| results: 'asis'
+out <- NULL
+
+ids <- dat %>% filter(col==y) %>% pull('id')
+
+#sgids <- sgids[sgids==1]
+#sgids <- sgids[sgids==9]
+
+for(i in 1:length(ids)) {
+  #i <- 1
+  #2310 / HH843
+  #seg <- segs[which(segs$local_identifier=='2310 / HH843'),]
+  row <- dat %>% filter(id==ids[i])
+  
+
+  
+  subenv <- new.env()
+  #TODO: make seg into a list with the name the seg_type
+  subenv$seg <- seg
+  
+  #NOTE: need to use quiet=TRUE, or else progress is printed to the report
+  out <- c(out,knit_child('seg_sub.qmd',envir=subenv,quiet=TRUE))
+
+}
+
+cat(out, sep='\n')
+```
+
+```{r finalize}
+dbDisconnect(db)
+
+#---- Warnings ----
+warns <- warnings()
+
+if(length(warns) > 0) { cat('\n'); summary(warns); cat('\n') }
+
+#---- Git Repo ----
+repo <- git2r::repository(pd('src'))
+gitSha <- git2r::sha(git2r::repository_head(repo)) %>% substr(1,7)
+
+rmt <- git2r::remotes(repo)
+
+if(length(rmt)) {
+  #TODO: need to parse rmt when I have a repo that has a remote
+  shaTxt <- glue('[{gitSha}](https://github.com/{rmt}/tree/{gitSha})')
+} else {
+  shaTxt <- gitSha
+}
+
+```
+
+Commit when this report was run: `r shaTxt`
+
+`r strftime(Sys.time(),format='%Y-%m-%d %H:%M')`. `r Sys.timezone()`
+
+`r capture.output(toc())`

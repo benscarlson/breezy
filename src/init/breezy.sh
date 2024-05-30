@@ -24,6 +24,8 @@ EOF
 #---- Set up variables
 #----
 
+#to=~/projects/rsam
+
 to=${argv[0]}
 pn=${to##*/} #project name
 
@@ -42,8 +44,9 @@ rm $to/Readme.md #Remove Readme for breezy repo
 
 #Rename project file
 mv $to/breezy.Rproj $to/${pn}.Rproj
-#Copy .Rprofile
-cp ${BREEZY_HOME}/.Rprofile $to
+
+#Copy .Rprofile. NOTE: not using this anymore
+#cp ${BREEZY_HOME}/.Rprofile $to
 #Copy project readme file
 #cp ${BREEZY_HOME}/src/init/Readme.md $to/src/Readme.md
 

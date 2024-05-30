@@ -8,12 +8,10 @@
 Template
 
 Usage:
-breezy_script.r <sesnm> <dat> <out> [--db=<db>] [--seed=<seed>] [-b]
-breezy_script.r (-h | --help)
+breezy_script.r <sesnm> <dat> <out> [--db=<db>] [--psesnm=<psesnm>] [--seed=<seed>] [-b]
 
 Control files:
-  ctfs/study.csv
-  ctfs/individual.csv
+  ctfs/entity.csv
 
 Parameters:
   dat: path to input csv file. 
@@ -21,76 +19,84 @@ Parameters:
   sesnm: session name.
 
 Options:
--h --help     Show this screen.
--v --version     Show version.
--d --db=<db> Path to movement database. Defaults to <wd>/data/mosey.db
--s --seed=<seed>  Random seed. Defaults to 5326 if not passed
+-d --db=<db> Path to the database. Defaults to <wd>/data/database.db
+-p --psesnm=<psesnm>  Parent session name
+-s --seed=<seed>  Random seed.
 -b --rollback   Rollback transaction if set to true.
 ' -> doc
 
 #---- Input Parameters ----
 if(interactive()) {
-  library(here)
-
-  .wd <- '~/projects/project_template/analysis'
-  .seed <- NULL
-  .rollback <- TRUE
-  rd <- here::here
+  
+  .pd <- here::here()
+  .wd <- file.path(.pd,'analysis')
   
   .datPF <- file.path(.wd,'data/dat.csv')
-  .dbPF <- file.path(.wd,'data/mosey.db')
+  .dbPF <- file.path(.wd,'data/database.db')
   .outPF <- file.path(.wd,'figs/myfig.pdf')
+  .psesnm <- 'main'
+  .seed <- NULL
   .sesnm <- 'test1'
-} else {
-  library(docopt)
-  library(rprojroot)
-
-  ag <- docopt(doc, version = '0.1\n')
-  .wd <- getwd()
-  .script <-  thisfile()
-  .seed <- ag$seed #don't set to numeric here
-  .rollback <- as.logical(ag$rollback)
-  rd <- is_rstudio_project$make_fix_file(.script)
+  .rollback <- FALSE
   
-  source(rd('src/funs/input_parse.r'))
+} else {
+
+  ag <- docopt::docopt(doc)
+  
+  .script <-  whereami::thisfile()
+  
+  .pd <- rprojroot::is_rstudio_project$make_fix_file(.script)()
+  .wd <- getwd()
+
+  source(file.path(.pd,'src','funs','input_parse.r'))
   
   .datPF <- makePath(ag$dat)
-  .dbPF <- makePath(ifelse(length(ag$db)!=0,ag$db,'data/mosey.db'))
+  .dbPF <- makePath(ag$db,'data/duck.db')
   .outPF <- makePath(ag$out)
+  .psesnm <- ag$psesnm
+  .seed <- ag$seed #don't set to numeric here. TODO: use parseCSL
   .sesnm <- ag$sesnm
+  .rollback <- as.logical(ag$rollback) #TODO use parseCSL
+
 }
 
 #---- Initialize Environment ----
-if(!is.null(.seed)) {message(paste('Random seed set to',.seed)); set.seed(as.numeric(.seed))}
+
+pd <- function(...) file.path(.pd,...)
+wd <- function(...) file.path(.wd,...)
 
 t0 <- Sys.time()
 
-source(rd('src/startup.r'))
+source(pd('src/startup.r'))
 
 suppressWarnings(
   suppressPackageStartupMessages({
-    library(DBI)
-    library(RSQLite)
+    #library(DBI)
+    library(duckdb)
   }))
 
 #Source all files in the auto load funs directory
-list.files(rd('src/funs/auto'),full.names=TRUE) %>% walk(source)
-source(rd('src/funs/themes.r'))
+list.files(pd('src/funs/auto'),full.names=TRUE) %>% walk(source)
+source(pd('src/funs/themes.r'))
 
 theme_set(theme_eda)
 
+#---- Local functions ----
+
 #---- Local parameters ----
 
+#---- Files and folders ----
+
 #---- Load control files ----#
-studies <- read_csv(file.path(.wd,'ctfs/study.csv'),col_types=cols()) %>%
+studies <- read_csv(wd('ctfs/study.csv')) %>%
   filter(as.logical(run)) %>% select(-run)
 
-inds <- read_csv(file.path(.wd,'ctfs/individual.csv'),col_types=cols()) %>% 
+inds <- read_csv(wd('ctfs/individual.csv')) %>% 
   filter(as.logical(run)) %>% select(-run)
 
 #---- Initialize database ----#
 invisible(assert_that(file.exists(.dbPF)))
-db <- dbConnect(RSQLite::SQLite(), .dbPF)
+db <- dbConnect(duckdb(), dbdir=.dbPF, read_only=TRUE)
 invisible(assert_that(length(dbListTables(db))>0))
 
 styTb <- tbl(db,'study')
@@ -98,7 +104,9 @@ styTb <- tbl(db,'study')
 #---- Load data ----
 message('Loading data...')
 
-sesid <- getSesId(.sesnm,'table name',db)
+psesid <- getSesId(.psesnm,'table name',db)
+
+hvLevels <- enum('hv_level',db)
 
 dat0 <- read_csv(.datPF,col_types=cols()) %>%
   inner_join(inds %>% select(individual_id),by='individual_id')
@@ -119,6 +127,8 @@ p <- dat %>% ggplot(aes(x=x,y=y)) + geom_point; if(interactive()) {print(p)}
 invisible(dbExecute(db,'PRAGMA foreign_keys=ON'))
 dbBegin(db)
 
+sesid <- addSession(.sesnm,psesid,'population',db)
+
 #---- Appending rows ----#
 dat %>%
   dbAppendTable(db,'table',.) %>%
@@ -129,13 +139,11 @@ rs <- dbSendStatement(db, 'update table set col2 = $col2 where id=$id')
 
 dbBind(rs,dat)
 
-rows <- dbGetRowsAffected(rs)
-dbClearResult(rs)
+rs %>% 
+  dbGetRowsAffected %>%
+  checkRows(nrow(dat),db)
 
-if(rows != nrow(dat)) {
-  message('Rows did not match. Rolling back.'); dbRollback(db)
-  stop('Stopping script')
-}
+dbClearResult(rs)
 
 #---- Saving a csv or other file ----#
 message(glue('Saving to {.outPF}'))
@@ -145,13 +153,15 @@ dir.create(dirname(.outPF),recursive=TRUE,showWarnings=FALSE)
 datout %>% write_csv(.outPF,na="")
 
 #---- Saving a figure ----#
-h=6; w=9
+h=6; w=9; units='in'
+  
 if(fext(.outPF)=='pdf') {
-  ggsave(.outPF,plot=p,height=h,width=w,device=cairo_pdf) #save pdf
+  ggsave(.outPF,plot=p,height=h,width=w,device=cairo_pdf,units=units) #save pdf
 } else if(fext(.outPF)=='png') {
-  ggsave(.outPF,plot=p,height=h,width=w,type='cairo')
+  ggsave(.outPF,plot=p,width=w,height=h,type='cairo',units=units)
+} else if(fext(.outPF)=='eps') {
+  ggsave(.outPF,plot=p,width=w,height=h,device=cairo_ps,units=units,bg='transparent')
 }
-
 #---- Finalize script ----#
 
 #-- Close transaction
@@ -163,32 +173,6 @@ if(.rollback) {
   dbCommit(db)
 }
 
-dbDisconnect(db)
-
-# if(!.test) {
-#   library(git2r)
-#   library(uuid)
-#   
-#   .runid <- UUIDgenerate()
-#   .parPF <- file.path(.wd,"run_params.csv")
-#   
-#   #Update repo and pull out commit sha
-#   repo <- repository(rd('src'))
-#   
-#   rstat <- status(repo)
-#   if(length(rstat$staged) + 
-#      length(rstat$unstaged) + 
-#      length(rstat$untracked) > 0) {
-#     add(repo,'.')
-#     commit(repo, glue('script auto update. runid: {.runid}'))
-#   }
-#   
-#   
-#   .git_sha <- sha(repository_head(repo))
-#   
-#   #Save all parameters to csv for reproducibility
-#   #TODO: write this to a workflow database instead
-#   saveParams(.parPF)
-# }
+dbDisconnect(db,shutdown=TRUE)
 
 message(glue('Script complete in {diffmin(t0)} minutes'))
