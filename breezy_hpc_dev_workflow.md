@@ -47,7 +47,7 @@ ssh grace
 ### Interactive environment
 
 ```bash
-srun --pty -p interactive -n 4 bash #request four tasks in the interactive queue
+srun --pty -p debug -n 4 bash #request four tasks in the interactive queue
 
 wd=~/projects/ms3/analysis/full_workflow_poc
 src=~/projects/ms3/src

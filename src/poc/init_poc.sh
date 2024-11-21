@@ -4,9 +4,15 @@ bindkey -e
 pd=~/projects/myproject
 src=$pd/src
 
-cp $BZY_SCRIPT $src/poc/poc-myscript.r
-cp $BZY_WF $src/poc/poc-myscript.sh
+#==== Templates ====
 
-cp $BZY_QMD $src/poc/reports/poc-myreport.qmd
-cp $BZY_WF_QMD $src/poc/reports/poc-myreport.sh
+env | grep BZY
 
+cp $BZY_SCRIPT $src/poc/myscript.r
+cp $BZY_WF $src/poc/myscript.sh
+
+cp $BZY_QMD $src/poc/myreport.qmd
+cp $BZY_QMD_SUB $src/poc/myreport_sub.qmd
+cp $BZY_WF_QMD $src/poc/myreport.sh
+
+#====

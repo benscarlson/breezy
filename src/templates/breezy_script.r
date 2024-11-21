@@ -77,9 +77,7 @@ suppressWarnings(
 
 #Source all files in the auto load funs directory
 list.files(pd('src/funs/auto'),full.names=TRUE) %>% walk(source)
-source(pd('src/funs/themes.r'))
-
-theme_set(theme_eda)
+theme_set(theme_minimal(base_size=15))
 
 #---- Local functions ----
 
