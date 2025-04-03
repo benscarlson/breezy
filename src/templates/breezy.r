@@ -62,12 +62,9 @@ if(interactive()) {
 
 #---- Initialize Environment ----
 
-pd <- function(...) file.path(.pd,...)
-wd <- function(...) file.path(.wd,...)
-
 t0 <- Sys.time()
 
-source(pd('src/startup.r'))
+source(file.path(.pd,'src/startup.r'))
 
 suppressWarnings(
   suppressPackageStartupMessages({
@@ -76,7 +73,7 @@ suppressWarnings(
   }))
 
 #Source all files in the auto load funs directory
-list.files(pd('src/funs/auto'),full.names=TRUE) %>% walk(source)
+list.files(file.path(.pd,'src/funs/auto'),full.names=TRUE) %>% walk(source)
 theme_set(theme_minimal(base_size=15))
 
 #---- Local functions ----

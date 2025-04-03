@@ -16,13 +16,13 @@ Run inside rstudio
 
 #### Sequential execution
 
-```bash
+``` bash
 hpc_script.r -t
 ```
 
 #### Parallel execution (uses doMC)
 
-```bash
+``` bash
 hpc_script.r -p mc -c 6 -t
 ```
 
@@ -30,7 +30,7 @@ hpc_script.r -p mc -c 6 -t
 
 Upload relevant project files
 
-```bash
+``` bash
 wdx="~/projects/coolproject/analysis"
 
 cd $wd
@@ -40,13 +40,14 @@ scp -r ctfs grace:$wdx
 ```
 
 Connect to hpc
-```bash
+
+``` bash
 ssh grace
 ```
 
 ### Interactive environment
 
-```bash
+``` bash
 srun --pty -p debug -n 4 bash #request four tasks in the interactive queue
 
 wd=~/projects/ms3/analysis/full_workflow_poc
@@ -60,13 +61,13 @@ source activate parallelR3
 
 #### Sequential execution
 
-```bash
+``` bash
 Rscript --vanilla $src/hpc_script.r out.csv -t
 ```
 
 #### Parallel execution
 
-```bash
+``` bash
 mpirun -n 4 R --slave -f $src/hpc_script.r --args out.csv -p mpi -m logs -t
 ```
 
@@ -76,7 +77,7 @@ mpirun -n 4 R --slave -f $src/hpc_script.r --args out.csv -p mpi -m logs -t
 
 Set up slurm script (hpc_script_sbatch.sh)
 
-```bash
+``` bash
 #!/bin/bash
 
 #SBATCH --mail-user=ben.s.carlson@gmail.com
@@ -92,7 +93,7 @@ mpirun -n $n Rscript --vanilla $src/poc/ctmm/poc_hpc_sqlite_simple.r $out -p mpi
 
 Run using slurm
 
-```bash
+``` bash
 wd=~/projects/ms3/analysis/full_workflow_poc/test3
 
 #need these for all scripts

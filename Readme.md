@@ -68,10 +68,10 @@ A common practice in R is to load an entire dataset into memory and then loop th
 git clone git@github.com:benscarlson/breezy.git ~/projects/breezy
 ```
 
-### Set up bash profile
+### Set up zsh profile
 
 ```bash
-# Save a backup of .bash_profile first
+# Save a backup of .zshrc first
 ts=.zshrc_`date +%Y-%m-%d_%H-%M-%S`
 cp ~/.zshrc ~/${ts}
 

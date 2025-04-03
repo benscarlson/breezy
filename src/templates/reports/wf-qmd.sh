@@ -25,13 +25,17 @@ mv ${qmd%.*}.html $out
 open $out
 
 #---- Publish report
+#SEE cvmaxnet_pkg/.../canonical.sh for updated way to use this
+# call folders under analysis session
+
 proj=myproj
+sess=poc/mysess
 
 RPT_HOME=~/projects/reports/reports/docs
 
-mkdir $RPT_HOME/$proj
+mkdir -p $RPT_HOME/$proj/$sess
 
-cp $out $RPT_HOME/$proj
+cp $out $RPT_HOME/$proj/$sess
 
 rptsrc=~/projects/reports/reports
 
@@ -41,4 +45,4 @@ git -C $rptsrc status
 git -C $rptsrc commit -am 'add/update reports'
 git -C $rptsrc push
 
-echo https://benscarlson.github.io/reports/proj/${out##*/}
+echo https://benscarlson.github.io/reports/$proj/$sess/${out##*/}

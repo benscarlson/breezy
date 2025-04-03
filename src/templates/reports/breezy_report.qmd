@@ -2,7 +2,7 @@
 title: "Report"
 format: 
   html:
-    self-contained: true
+    embed-resources: true
     fig-format: jpeg
 execute: 
   echo: false
@@ -35,13 +35,10 @@ if(interactive()) {
   .sesnm <- params$sesnm
 }
 
-pd <- function(...) file.path(.pd,...)
-wd <- function(...) file.path(.wd,...)
-
 #---- Initialize Environment ----#
 if(!is.null(.seed)) {message(paste('Random seed set to',.seed)); set.seed(as.numeric(.seed))}
 
-source(pd('src/startup.r'))
+source(file.path(.pd,'src/startup.r'))
 
 invisible(assert_that(!is.null(.dbPF)))
 invisible(assert_that(!is.null(.sesnm)))
@@ -58,7 +55,7 @@ suppressWarnings(
 tic() #For report execution time
 
 #Source all files in the auto load funs directory
-list.files(pd('src/funs/auto'),full.names=TRUE) %>% walk(source)
+list.files(file.path(.pd,'src/funs/auto'),full.names=TRUE) %>% walk(source)
 theme_set(theme_minimal(base_size=15))
 
 #---- Local functions ----
